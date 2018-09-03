@@ -67,6 +67,7 @@ Operations with columns are units aware so behave as we would intuitively expect
    3  9000 foot * force_pound * revolutions_per_minute
 
 Each column can be accessed as a Pandas Series
+
 .. doctest::
 
    >>> print(df.power)
@@ -78,6 +79,7 @@ Each column can be accessed as a Pandas Series
 
 
 Which contains a PintArray
+
 .. doctest::
 
    >>> print(df.power.values)
@@ -89,6 +91,7 @@ Which contains a PintArray
 
 
 Which contains a Quantity
+
 .. doctest::
 
    >>> print(df.power.values.data)
