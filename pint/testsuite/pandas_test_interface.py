@@ -32,7 +32,7 @@ def dtype():
 
 @pytest.fixture
 def data():
-    return ppi.PintArray( np.arange(start=1,stop=101) * ureg.kilogram)
+    return ppi.PintArray( np.arange(start=1.,stop=101.) * ureg.kilogram)
 
 
 @pytest.fixture
@@ -405,14 +405,65 @@ class TestSeriesAccessors(object):
        assert getattr(s.pint, attr) == getattr(data._data,attr)
     
     @pytest.mark.parametrize('attr', [
-'imag',
 'm',
-'magnitude',
+'magnitude'])
+    def test_series_property_accessors(self, data, attr):
+       s = pd.Series(data)
+       assert all(getattr(s.pint, attr) == pd.Series(getattr(data._data,attr)))
+        
+    @pytest.mark.parametrize('attr', [
+'imag',
 'real'])
     def test_series_property_accessors(self, data, attr):
        s = pd.Series(data)
-       assert getattr(s.pint, attr) == pd.Series(getattr(data._data,attr))
+       assert all(getattr(s.pint, attr) == pd.Series(PintArray(getattr(data._data,attr))))
         
+    @pytest.mark.parametrize('attr_args', [
+('check',({"[length]": 1})),
+('compatible_units',()),
+# ('format_babel',()), Needs babel installed?
+# ('plus_minus',()), Needs uncertanties
+('to_tuple',()),
+('tolist',())])
+    def test_series_scalar_method_accessors(self, data, attr_args):
+       attr=attr_args[0]
+       args=attr_args[1]
+       s = pd.Series(data)
+       assert getattr(s.pint, attr)(*args) == getattr(data._data,attr)(*args)
+       
+    @pytest.mark.parametrize('attr_args', [
+('ito',("g",)),
+('ito_base_units',()),
+('ito_reduced_units',()),
+('ito_root_units',()),
+('put',(1, data()[0]))
+       ])
+    def test_series_inplace_method_accessors(self, data, attr_args):
+       attr=attr_args[0]
+       args=attr_args[1]
+       from copy import deepcopy
+       s = pd.Series(deepcopy(data))
+       getattr(s.pint, attr)(*args)
+       getattr(data._data,attr)(*args)
+       assert all(s.values == data)
+    
+    @pytest.mark.parametrize('attr_args', [
+('clip',(data()[10],data()[20])),
+('from_tuple',(data().data.to_tuple(),)),
+('m_as',("g",)),
+('searchsorted',(data()[10],)),
+('to',("g")),
+('to_base_units',()),
+('to_compact',()),
+('to_reduced_units',()),
+('to_root_units',()),
+# ('to_timedelta',()),
+])
+    def test_series_method_accessors(self, data, attr_args):
+       attr=attr_args[0]
+       args=attr_args[1]
+       s = pd.Series(data)
+       assert all(getattr(s.pint, attr)(*args) == getattr(data._data,attr)(*args))
 arithmetic_ops = [
     operator.add,
     operator.sub,

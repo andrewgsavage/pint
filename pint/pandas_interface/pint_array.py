@@ -379,7 +379,15 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         used for interacting with our indexers.
         """
         return np.array(self)
-
+        
+    def _formatting_values(self):
+        # type: () -> np.ndarray
+        # At the moment, this has to be an array since we use result.dtype
+        """An array of values to be printed in, e.g. the Series repr"""
+        output=[str(item) for item in self.data.magnitude]
+        # Tried this but it doesn't print as a newline in pandas 
+        # output[0]= str(self.data.units) + r"\n" + output[0]
+        return np.array(output)
 
 
     @classmethod
@@ -540,6 +548,8 @@ class DelegatedProperty(Delegated):
         name = object.__getattribute__(obj, '_name')
         result = getattr(object.__getattribute__(obj, '_data')._data, self.name)
         if self.to_series:
+            if isinstance(result, _Quantity):
+                result = PintArray(result)
             return Series(result, index, name=name)
         else:
             return result
@@ -553,10 +563,12 @@ class DelegatedMethod(Delegated):
         name = object.__getattribute__(obj, '_name')
         method = getattr(object.__getattribute__(obj, '_data')._data, self.name)
         def delegated_method(*args, **kwargs):
+            result = method(*args, **kwargs)
             if self.to_series:
-                return Series(PintArray(method(*args, **kwargs)), index, name=name)
-            else:
-                return method(*args, **kwargs)
+                if isinstance(result, _Quantity):
+                    result = PintArray(result)
+                result = Series(result, index, name=name)
+            return result
         return delegated_method
 
 class DelegatedScalarMethod(DelegatedMethod):
@@ -595,8 +607,6 @@ for attr in [
     setattr(PintSeriesAccessor,attr,DelegatedScalarMethod(attr))
 for attr in [
 'clip',
-'compare',
-'fill',
 'from_tuple',
 'm_as',
 'searchsorted',
