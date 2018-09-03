@@ -66,18 +66,49 @@ Operations with columns are units aware so behave as we would intuitively expect
    2  4000 foot * force_pound * revolutions_per_minute
    3  9000 foot * force_pound * revolutions_per_minute
 
-Data accessing is a little bit awkward (fixing this would be helpful), but can be done as shown below
+Each column can be accessed as a Pandas Series
+.. doctest::
 
+   >>> print(df.power)
+    0    1000 foot * force_pound * revolutions_per_minute
+    1    4000 foot * force_pound * revolutions_per_minute
+    2    4000 foot * force_pound * revolutions_per_minute
+    3    9000 foot * force_pound * revolutions_per_minute
+    Name: power, dtype: pint
+
+
+Which contains a PintArray
+.. doctest::
+
+   >>> print(df.power.values)
+    PintArray([1000 foot * force_pound * revolutions_per_minute,
+               4000 foot * force_pound * revolutions_per_minute,
+               4000 foot * force_pound * revolutions_per_minute,
+               9000 foot * force_pound * revolutions_per_minute],
+              dtype='pint')
+
+
+Which contains a Quantity
 .. doctest::
 
    >>> print(df.power.values.data)
    [1000 4000 4000 9000] foot * force_pound * revolutions_per_minute
-   >>> print(df.torque.values.data)
-   [1 2 2 3] foot * force_pound
-   >>> print(df.angular_velocity.values.data)
-   [1000 2000 2000 3000] revolutions_per_minute
 
-The standard pint conversions can then be performed
+
+Pandas Series accessors are provided for most Quantity properties and methods, which will convert the result to a Series where possible.
+
+.. doctest::
+
+   >>> print(df.power.pint.dimensionality) 
+   <UnitsContainer({'[length]': 2.0, '[mass]': 1.0, '[time]': -3.0})>
+   >>> print(df.power.pint.to("kW"))
+    0    0.14198092353610375 kilowatt
+    1      0.567923694144415 kilowatt
+    2      0.567923694144415 kilowatt
+    3     1.2778283118249338 kilowatt
+    Name: power, dtype: pint
+
+Standard pint conversions can still be performed on the underlying quantity, and will still return a quantity.
 
 .. doctest::
 
