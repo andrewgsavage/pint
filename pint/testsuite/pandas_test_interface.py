@@ -353,7 +353,7 @@ class TestUserInterface(object):
         # This needs to be a list of scalar quantities to work :<
         ser = pd.Series([q for q in strt], dtype=ppi.PintType())
         assert all(ser.values == strt)
-
+        
     def test_df_operations(self):
         # simply a copy of what's in the notebook
         Q_ = ureg.Quantity
@@ -389,9 +389,30 @@ class TestUserInterface(object):
 
         df_.pint.to_base_units().pint.dequantify()
 
-
-
-
+class TestSeriesAccessors(object):
+    @pytest.mark.parametrize('attr', [
+'debug_used',
+'default_format',
+'dimensionality',
+'dimensionless',
+'force_ndarray',
+'shape',
+'u',
+'unitless',
+'units'])
+    def test_series_scalar_property_accessors(self, data, attr):
+       s = pd.Series(data)
+       assert getattr(s.pint, attr) == getattr(data._data,attr)
+    
+    @pytest.mark.parametrize('attr', [
+'imag',
+'m',
+'magnitude',
+'real'])
+    def test_series_property_accessors(self, data, attr):
+       s = pd.Series(data)
+       assert getattr(s.pint, attr) == pd.Series(getattr(data._data,attr))
+        
 arithmetic_ops = [
     operator.add,
     operator.sub,

@@ -540,7 +540,7 @@ class DelegatedProperty(Delegated):
         name = object.__getattribute__(obj, '_name')
         result = getattr(object.__getattribute__(obj, '_data')._data, self.name)
         if self.to_series:
-            return Series(PintArray(result), index, name=name)
+            return Series(result, index, name=name)
         else:
             return result
 
