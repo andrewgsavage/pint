@@ -66,7 +66,18 @@ Operations with columns are units aware so behave as we would intuitively expect
    2  4000 foot * force_pound * revolutions_per_minute
    3  9000 foot * force_pound * revolutions_per_minute
 
-Data accessing is a little bit awkward (fixing this would be helpful), but can be done as shown below
+The `values` attribute returns a `PintArray` e.g.
+
+.. doctest::
+
+   >>> print(df.power.values)
+   PintArray([1000 foot * force_pound * revolutions_per_minute,
+              4000 foot * force_pound * revolutions_per_minute,
+              4000 foot * force_pound * revolutions_per_minute,
+              9000 foot * force_pound * revolutions_per_minute],
+             dtype='pint')
+
+To get the underlying array of pint quantities, you need to access `values.data` e.g.
 
 .. doctest::
 
