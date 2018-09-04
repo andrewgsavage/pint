@@ -198,20 +198,6 @@ Then use the DataFrame's `pint.quantify` method to convert the columns from `np.
    2           1000.0 bar  10.0 liter / minute  nan kilowatt
    3           1000.0 bar  10.0 liter / minute  nan kilowatt
 
-
-
-.. doctest::
-
-   >>> from os.path import join
-   >>> df=pd.read_csv(join("..", "pint", "testsuite", "test-data", "pint_test_data.csv"), header=[0,1])
-   >>> print(df)
-     speed mech power torque  rail pressure fuel flow rate fluid power
-       rpm         kW    N m            bar          l/min          kW
-   0  1000        NaN     10           1000             10         NaN
-   1  1100        NaN     10  1000000000000             10         NaN
-   2  1200        NaN     10           1000             10         NaN
-   3  1200        NaN     10           1000             10         NaN
-
 As previously, operations between DataFrame columns are unit aware
 
 .. doctest::

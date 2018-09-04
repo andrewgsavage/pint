@@ -10,7 +10,10 @@
 """
 
 import copy
+import warnings
+
 import numpy as np
+
 from pandas.core import ops
 from pandas.core.arrays import ExtensionArray
 from pandas.api.extensions import register_dataframe_accessor, register_series_accessor
@@ -25,8 +28,9 @@ from pandas.compat import u, set_function_name
 from pandas.io.formats.printing import (
     format_object_summary, format_object_attrs, default_pprint)
 from pandas import Series, DataFrame
-import warnings
+
 from ..quantity import build_quantity_class, _Quantity
+from ..compat import string_types
 from .. import _DEFAULT_REGISTRY
 
 class PintType(ExtensionDtype):
@@ -88,7 +92,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             return self._dtype.type(magnitudes, values[0].units)
 
-        return NotImplementedError
+        raise NotImplementedError
 
     def _find_first_unit(self, values):
         for v in values:
@@ -114,7 +118,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if is_integer(item):
             return self._data[item]
 
-        return type(self)(self._data[item])
+        return self.__class__(self._data[item])
 
     def __len__(self):
         # type: () -> int
@@ -149,10 +153,12 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __array__(self, dtype=None, copy=False):
     # this is necessary for some pandas operations, eg transpose
     # note, units will be lost
-        if dtype == None:
-            dtype=object
-        if type(dtype) == str:
+        if dtype is None:
+            dtype = object
+        if isinstance(dtype, string_types):
             dtype = getattr(np, dtype)
+        # it seems impossible to avoid using this, even dtype is object causes
+        # failure...
         if dtype == object:
             return np.array(list(self._data), dtype = dtype, copy = copy)
         if not isinstance(dtype, np.dtype):
