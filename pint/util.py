@@ -615,9 +615,6 @@ class SharedRegistryObject(object):
         same unit registry.
 
         """
-        if type(other).__name__ == 'PintArray':
-            print("notimpl")
-            return NotImplemented
         
         if self._REGISTRY is getattr(other, '_REGISTRY', None):
             return True
