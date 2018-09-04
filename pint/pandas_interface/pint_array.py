@@ -92,7 +92,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
             return self._dtype.type(magnitudes, values[0].units)
 
-        return NotImplementedError
+        raise NotImplementedError
 
     def _find_first_unit(self, values):
         for v in values:
