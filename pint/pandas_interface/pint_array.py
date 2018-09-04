@@ -149,7 +149,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     def __array__(self, dtype=None, copy=False):
     # this is necessary for some pandas operations, eg transpose
     # note, units will be lost
-        if dtype == None:
+        if dtype is None:
             dtype=object
         if type(dtype) == str:
             dtype = getattr(np, dtype)
