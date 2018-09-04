@@ -114,7 +114,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         if is_integer(item):
             return self._data[item]
 
-        return type(self)(self._data[item])
+        return self.__class__(self._data[item])
 
     def __len__(self):
         # type: () -> int
