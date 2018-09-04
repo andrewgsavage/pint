@@ -615,7 +615,6 @@ class SharedRegistryObject(object):
         same unit registry.
 
         """
-        
         if self._REGISTRY is getattr(other, '_REGISTRY', None):
             return True
 
