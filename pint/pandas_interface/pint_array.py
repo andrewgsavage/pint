@@ -157,7 +157,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
             dtype = object
         if isinstance(dtype, string_types):
             dtype = getattr(np, dtype)
-        if dtype == object:
+        if dtype == object:  # it seems impossible to avoid using this...
             return np.array(list(self._data), dtype = dtype, copy = copy)
         if not isinstance(dtype, np.dtype):
             list_of_converteds = [dtype(item) for item in self._data]
