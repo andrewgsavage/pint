@@ -70,7 +70,7 @@ def check_implemented(f):
             return NotImplemented
         # pandas often gets to arrays of quantities [ Q_(1,"m"), Q_(2,"m")]
         # and expects Quantity * array[Quantity] should return NotImplemented
-        elif type(other)==list and isinstance(other[0], type(self)):
+        elif isinstance(other, list) and isinstance(other[0], type(self)):
             return NotImplemented
         result = f(self, *args, **kwargs)
         return result
@@ -136,7 +136,7 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
         if hasattr(inst._magnitude,"__iter__"):
             inst.__iter__ = cls._iter
         return inst
-    
+
     def _iter(self):
         """
         Will be become __iter__() for instances with iterable magnitudes
@@ -631,7 +631,7 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
             raise OffsetUnitCalculusError(self._units, other._units)
 
         return self
-    
+
     @check_implemented
     def _add_sub(self, other, op):
         """Perform addition or subtraction operation and return the result.
@@ -1634,8 +1634,8 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
 
     def to_timedelta(self):
         return datetime.timedelta(microseconds=self.to('microseconds').magnitude)
-    
-        
+
+
 
 def build_quantity_class(registry, force_ndarray=False):
 
