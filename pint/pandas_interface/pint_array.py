@@ -10,7 +10,10 @@
 """
 
 import copy
+import warnings
+
 import numpy as np
+
 from pandas.core import ops
 from pandas.core.arrays import ExtensionArray
 from pandas.api.extensions import register_dataframe_accessor, register_series_accessor
@@ -25,8 +28,9 @@ from pandas.compat import u, set_function_name
 from pandas.io.formats.printing import (
     format_object_summary, format_object_attrs, default_pprint)
 from pandas import Series, DataFrame
-import warnings
+
 from ..quantity import build_quantity_class, _Quantity
+from ..compat import string_types
 from .. import _DEFAULT_REGISTRY
 
 class PintType(ExtensionDtype):
@@ -150,8 +154,8 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
     # this is necessary for some pandas operations, eg transpose
     # note, units will be lost
         if dtype is None:
-            dtype=object
-        if type(dtype) == str:
+            dtype = object
+        if isinstance(dtype, string_types):
             dtype = getattr(np, dtype)
         if dtype == object:
             return np.array(list(self._data), dtype = dtype, copy = copy)
