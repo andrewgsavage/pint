@@ -76,7 +76,50 @@ def check_implemented(f):
         return result
     return wrapped
 
+HANDLED_FUNCTIONS = {}
 
+def implements(numpy_function):
+    """Register an __array_function__ implementation for BaseQuantity objects."""
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+    return decorator
+
+def convert_to_consistent_units(*args):
+    """Takes the args for a numpy function and converts any Quantity or Sequence of Quantities 
+    into the units of the first Quantiy/Sequence of quantities. Other args are left untouched.
+    """
+    out_units=None
+    for arg in args:
+        if isinstance(arg,BaseQuantity):
+            out_units = arg.units
+        elif hasattr(arg, "__iter__") and not isinstance(arg, string_types):
+            if isinstance(arg[0],BaseQuantity):
+                out_units = arg[0].units
+        if out_units is not None:
+            break
+    
+    new_args=[]
+    for arg in args:
+        if isinstance(arg,BaseQuantity):
+            arg = arg.m_as(out_units)
+        elif hasattr(arg, "__iter__") and not isinstance(arg, string_types):
+            if isinstance(arg[0],BaseQuantity):
+                arg = [item.m_as(out_units) for item in arg]
+        new_args.append(arg)
+    return out_units, new_args
+    
+def implement_func(func_str):
+    func = getattr(np,func_str)
+    @implements(func)
+    def _(*args):
+        out_units, new_args = convert_to_consistent_units(*args)
+        Q_ = out_units._REGISTRY.Quantity
+        return Q_(func(*new_args), out_units)
+
+for func_str in ['linspace', 'concatenate', 'hstack', 'vstack']:
+    implement_func(func_str)
+    
 @fix_str_conversions
 class BaseQuantity(PrettyIPython, SharedRegistryObject):
     """Implements a class to describe a physical quantity:
@@ -87,6 +130,12 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
     :param units: units of the physical quantity to be created.
     :type units: UnitsContainer, str or Quantity.
     """
+    def __array_function__(self, func, types, args, kwargs):
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, BaseQuantity) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     #: Default formatting string.
     default_format = ''
