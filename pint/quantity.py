@@ -120,7 +120,7 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
             inst._magnitude = _to_magnitude(value, inst.force_ndarray)
             inst._units = inst._REGISTRY.parse_units(units)._units
         elif isinstance(units, SharedRegistryObject):
-            if isinstance(units, _Quantity) and units.magnitude != 1:
+            if isinstance(units, BaseQuantity) and units.magnitude != 1:
                 inst = copy.copy(units)
                 logger.warning('Creating new Quantity using a non unity '
                                'Quantity as units.')
@@ -223,7 +223,7 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
-            super(_Quantity, self)._repr_pretty_(p, cycle)
+            super(BaseQuantity, self)._repr_pretty_(p, cycle)
         else:
             p.pretty(self.magnitude)
             p.text(" ")
@@ -1123,7 +1123,7 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
     def __eq__(self, other):
         # We compare to the base class of Quantity because
         # each Quantity class is unique.
-        if not isinstance(other, _Quantity):
+        if not isinstance(other, BaseQuantity):
             if _eq(other, 0, True):
                 # Handle the special case in which we compare to zero
                 # (or an array of zeros)
@@ -1255,49 +1255,6 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
                 tuple(__prod_units.keys()) + \
                 tuple(__copy_units) + tuple(__skip_other_args)
 
-    def clip(self, first=None, second=None, out=None, **kwargs):
-        min = kwargs.get('min', first)
-        max = kwargs.get('max', second)
-
-        if min is None and max is None:
-            raise TypeError('clip() takes at least 3 arguments (2 given)')
-
-        if max is None and 'min' not in kwargs:
-            min, max = max, min
-
-        kwargs = {'out': out}
-
-        if min is not None:
-            if isinstance(min, self.__class__):
-                kwargs['min'] = min.to(self).magnitude
-            elif self.dimensionless:
-                kwargs['min'] = min
-            else:
-                raise DimensionalityError('dimensionless', self._units)
-
-        if max is not None:
-            if isinstance(max, self.__class__):
-                kwargs['max'] = max.to(self).magnitude
-            elif self.dimensionless:
-                kwargs['max'] = max
-            else:
-                raise DimensionalityError('dimensionless', self._units)
-
-        return self.__class__(self.magnitude.clip(**kwargs), self._units)
-
-    def fill(self, value):
-        self._units = value._units
-        return self.magnitude.fill(value.magnitude)
-
-    def put(self, indices, values, mode='raise'):
-        if isinstance(values, self.__class__):
-            values = values.to(self).magnitude
-        elif self.dimensionless:
-            values = self.__class__(values, '').to(self)
-        else:
-            raise DimensionalityError('dimensionless', self._units)
-        self.magnitude.put(indices, values, mode)
-
     @property
     def real(self):
         return self.__class__(self._magnitude.real, self._units)
@@ -1358,38 +1315,32 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
 
         return value
 
-    def __len__(self):
-        return len(self._magnitude)
 
-    def __getattr__(self, item):
-        # Attributes starting with `__array_` are common attributes of NumPy ndarray.
-        # They are requested by numpy functions.
-        if item.startswith('__array_'):
-            warnings.warn("The unit of the quantity is stripped.", UnitStrippedWarning)
-            if isinstance(self._magnitude, ndarray):
-                return getattr(self._magnitude, item)
-            else:
-                # If an `__array_` attributes is requested but the magnitude is not an ndarray,
-                # we convert the magnitude to a numpy ndarray.
-                self._magnitude = _to_magnitude(self._magnitude, force_ndarray=True)
-                return getattr(self._magnitude, item)
-        elif item in self.__handled:
-            if not isinstance(self._magnitude, ndarray):
-                self._magnitude = _to_magnitude(self._magnitude, True)
-            attr = getattr(self._magnitude, item)
-            if callable(attr):
-                return functools.partial(self.__numpy_method_wrap, attr)
-            return attr
-        try:
-            return getattr(self._magnitude, item)
-        except AttributeError as ex:
-            raise AttributeError("Neither Quantity object nor its magnitude ({}) "
-                                 "has attribute '{}'".format(self._magnitude, item))
+    # def __getattr__(self, item):
+        # # Attributes starting with `__array_` are common attributes of NumPy ndarray.
+        # # They are requested by numpy functions.
+        # if item.startswith('__array_'):
+            # warnings.warn("The unit of the quantity is stripped.", UnitStrippedWarning)
+            # if isinstance(self._magnitude, ndarray):
+                # return getattr(self._magnitude, item)
+            # else:
+                # # If an `__array_` attributes is requested but the magnitude is not an ndarray,
+                # # we convert the magnitude to a numpy ndarray.
+                # self._magnitude = _to_magnitude(self._magnitude, force_ndarray=True)
+                # return getattr(self._magnitude, item)
+        # elif item in self.__handled:
+            # if not isinstance(self._magnitude, ndarray):
+                # self._magnitude = _to_magnitude(self._magnitude, True)
+            # attr = getattr(self._magnitude, item)
+            # if callable(attr):
+                # return functools.partial(self.__numpy_method_wrap, attr)
+            # return attr
+        # try:
+            # return getattr(self._magnitude, item)
+        # except AttributeError as ex:
+            # raise AttributeError("Neither Quantity object nor its magnitude ({}) "
+                                 # "has attribute '{}'".format(self._magnitude, item))
 
-    def tolist(self):
-        units = self._units
-        return [self.__class__(value, units).tolist() if isinstance(value, list) else self.__class__(value, units)
-                for value in self._magnitude.tolist()]
 
     __array_priority__ = 17
 
@@ -1627,6 +1578,9 @@ class BaseQuantity(PrettyIPython, SharedRegistryObject):
         return datetime.timedelta(microseconds=self.to('microseconds').magnitude)
 
 class QuantitySequenceMixin(object):
+    def __len__(self):
+        return len(self._magnitude)
+        
     def __getitem__(self, key):
         try:
             value = self._magnitude[key]
@@ -1669,6 +1623,54 @@ class QuantitySequenceMixin(object):
         # # Allow exception to propagate in case of non-iterable magnitude
         it_mag = iter(self.magnitude)
         return iter((self.__class__(mag, self._units) for mag in it_mag))
+
+    def clip(self, first=None, second=None, out=None, **kwargs):
+        min = kwargs.get('min', first)
+        max = kwargs.get('max', second)
+
+        if min is None and max is None:
+            raise TypeError('clip() takes at least 3 arguments (2 given)')
+
+        if max is None and 'min' not in kwargs:
+            min, max = max, min
+
+        kwargs = {'out': out}
+
+        if min is not None:
+            if isinstance(min, self.__class__):
+                kwargs['min'] = min.to(self).magnitude
+            elif self.dimensionless:
+                kwargs['min'] = min
+            else:
+                raise DimensionalityError('dimensionless', self._units)
+
+        if max is not None:
+            if isinstance(max, self.__class__):
+                kwargs['max'] = max.to(self).magnitude
+            elif self.dimensionless:
+                kwargs['max'] = max
+            else:
+                raise DimensionalityError('dimensionless', self._units)
+
+        return self.__class__(self.magnitude.clip(**kwargs), self._units)
+
+    def fill(self, value):
+        self._units = value._units
+        return self.magnitude.fill(value.magnitude)
+
+    def put(self, indices, values, mode='raise'):
+        if isinstance(values, self.__class__):
+            values = values.to(self).magnitude
+        elif self.dimensionless:
+            values = self.__class__(values, '').to(self)
+        else:
+            raise DimensionalityError('dimensionless', self._units)
+        self.magnitude.put(indices, values, mode)
+        
+    def tolist(self):
+        units = self._units
+        return [self.__class__(value, units).tolist() if isinstance(value, list) else self.__class__(value, units)
+                for value in self._magnitude.tolist()]
 
 
 def build_quantity_class(registry, force_ndarray=False):
