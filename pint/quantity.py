@@ -77,6 +77,155 @@ def check_implemented(f):
         return result
     return wrapped
 
+HANDLED_FUNCTIONS = {}
+
+def implements(numpy_function):
+    """Register an __array_function__ implementation for BaseQuantity objects."""
+    def decorator(func):
+        HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+    return decorator
+
+def _is_quantity_sequence(arg):
+    if hasattr(arg, "__iter__") and hasattr(arg, "__len__") and not isinstance(arg, string_types):
+        if isinstance(arg[0],BaseQuantity):
+            if not all([isinstance(item,BaseQuantity) for item in arg]):
+                raise TypeError("{} contains items that aren't BaseQuantity type".format(arg))
+            return True
+    return False
+    
+def _get_first_input_units(args, kwargs={}):
+    args_combo = list(args)+list(kwargs.values())
+    out_units=None
+    for arg in args_combo:
+        if isinstance(arg,BaseQuantity):
+            out_units = arg.units
+        elif _is_quantity_sequence(arg):
+            out_units = arg[0].units
+        if out_units is not None:
+            break
+    return out_units
+    
+def convert_to_consistent_units(pre_calc_units=None, *args, **kwargs):
+    """Takes the args for a numpy function and converts any Quantity or Sequence of Quantities 
+    into the units of the first Quantiy/Sequence of quantities. Other args are left untouched.
+    """
+    print(args,kwargs)
+    def convert_arg(arg):
+        if pre_calc_units is not None:
+            if isinstance(arg,BaseQuantity):
+                return arg.m_as(pre_calc_units)
+            elif _is_quantity_sequence(arg):
+                return [item.m_as(pre_calc_units) for item in arg]
+        else:
+            if isinstance(arg,BaseQuantity):
+                return arg.m
+            elif _is_quantity_sequence(arg):
+                return [item.m for item in arg]
+        return arg
+    
+    new_args=tuple(convert_arg(arg) for arg in args)
+    new_kwargs = {key:convert_arg(arg) for key,arg in kwargs.items()}
+    print( new_args, new_kwargs)
+    return new_args, new_kwargs
+    
+def implement_func(func_str, pre_calc_units_, post_calc_units_, out_units_):
+    """
+    :param func_str: The numpy function to implement
+    :type func_str: str
+    :param pre_calc_units: The units any quantity/ sequences of quantities should be converted to. 
+    consistent_infer converts all qs to the first units found in args/kwargs
+    inconsistent does not convert any qs, eg for product
+    rad (or any other unit) converts qs to radians/ other unit
+    None converts qs to magnitudes without conversion
+    :type pre_calc_units: NoneType, str
+    :param pre_calc_units: The units the result of the function should be initiated as. 
+    as_pre_calc uses the units it was converted to pre calc. Do not use with pre_calc_units="inconsistent"
+    rad (or any other unit) uses radians/ other unit
+    prod uses multiplies the input quantity units
+    None causes func to return without creating a quantity from the output, regardless of any out_units
+    :type out_units: NoneType, str
+    :param out_units: The units the result of the function should be returned to the user as.  The quantity created in the post_calc_units will be converted to the out_units
+    None or as_post_calc uses the units the quantity was initiated in, ie the post_calc_units, without any conversion.
+    rad (or any other unit) uses radians/ other unit
+    infer_from_input uses the first input units found, as received by the function before any conversions.
+    :type out_units: NoneType, str
+    
+    """
+    func = getattr(np,func_str)
+    print(func_str)
+    
+    @implements(func)
+    def _(*args, **kwargs):
+        # TODO make work for kwargs
+        print("_",func_str)
+        args_and_kwargs = list(args)+list(kwargs.values())
+        
+        (pre_calc_units, post_calc_units, out_units)=(pre_calc_units_, post_calc_units_, out_units_)
+        first_input_units=_get_first_input_units(args, kwargs)
+        if pre_calc_units == "consistent_infer":
+            pre_calc_units = first_input_units
+            
+        if pre_calc_units == "inconsistent":
+            new_args, new_kwargs = args, kwargs
+        else:   
+            new_args, new_kwargs = convert_to_consistent_units(pre_calc_units, *args, **kwargs)
+        res = func(*new_args, **new_kwargs)
+        
+        if post_calc_units is None:
+            return res
+        elif post_calc_units == "as_pre_calc":
+            post_calc_units = pre_calc_units
+        elif post_calc_units == "prod":
+            product = 1
+            for x in args_and_kwargs:
+                product *= x
+            post_calc_units = product.units
+        elif post_calc_units == "div":
+            product = first_input_units*first_input_units
+            for x in args_and_kwargs:
+                product /= x
+            post_calc_units = product.units
+        elif post_calc_units == "delta":
+            post_calc_units = (1*first_input_units-1*first_input_units).units
+        elif post_calc_units == "delta,div":
+            product=(1*first_input_units-1*first_input_units).units
+            for x in args_and_kwargs[1:]:
+                product /= x
+            post_calc_units = product.units
+        print(post_calc_units)
+        Q_ = first_input_units._REGISTRY.Quantity
+        post_calc_Q_= Q_(res, post_calc_units)
+        
+        if out_units is None or out_units == "as_post_calc":
+            return post_calc_Q_
+        elif out_units == "infer_from_input":
+            out_units = first_input_units
+        return post_calc_Q_.to(out_units)
+@implements(np.power)
+def _power(*args, **kwargs):
+    print(args)
+    pass
+for func_str in ['linspace', 'concatenate', 'block', 'stack', 'hstack', 'vstack',  'dstack', 'atleast_1d', 'column_stack', 'atleast_2d', 'atleast_3d', 'expand_dims','squeeze', 'swapaxes', 'compress', 'searchsorted' ,'rollaxis', 'broadcast_to', 'moveaxis', 'fix']:
+    implement_func(func_str, 'consistent_infer', 'as_pre_calc', 'as_post_calc')
+    
+
+for func_str in ['unwrap']:
+    implement_func(func_str, 'rad', 'rad', 'infer_from_input')
+    
+
+for func_str in ['size', 'isreal', 'iscomplex']:
+    implement_func(func_str, None, None, None)
+    
+for func_str in ['cross', 'trapz']:
+    implement_func(func_str, None, 'prod', None)
+    
+for func_str in ['diff', 'ediff1d',]:
+    implement_func(func_str, None, 'delta', None)
+    
+for func_str in ['gradient', ]:
+    implement_func(func_str, None, 'delta,div', None)
+    
 
 @contextlib.contextmanager
 def printoptions(*args, **kwargs):
@@ -92,9 +241,8 @@ def printoptions(*args, **kwargs):
     finally:
         np.set_printoptions(**opts)
 
-
 @fix_str_conversions
-class _Quantity(PrettyIPython, SharedRegistryObject):
+class BaseQuantity(PrettyIPython, SharedRegistryObject):
     """Implements a class to describe a physical quantity:
     the product of a numerical value and a unit of measurement.
 
@@ -103,6 +251,13 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
     :param units: units of the physical quantity to be created.
     :type units: UnitsContainer, str or Quantity.
     """
+    def __array_function__(self, func, types, args, kwargs):
+        print("__array_function__", func)
+        if func not in HANDLED_FUNCTIONS:
+            return NotImplemented
+        if not all(issubclass(t, BaseQuantity) for t in types):
+            return NotImplemented
+        return HANDLED_FUNCTIONS[func](*args, **kwargs)
 
     #: Default formatting string.
     default_format = ''
@@ -111,7 +266,9 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
         from . import _build_quantity
         return _build_quantity, (self.magnitude, self._units)
 
-    def __new__(cls, value, units=None):
+    
+    @classmethod
+    def _new(cls, value, units=None):
         if units is None:
             if isinstance(value, string_types):
                 if value == '':
@@ -134,7 +291,7 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
             inst._magnitude = _to_magnitude(value, inst.force_ndarray)
             inst._units = inst._REGISTRY.parse_units(units)._units
         elif isinstance(units, SharedRegistryObject):
-            if isinstance(units, _Quantity) and units.magnitude != 1:
+            if isinstance(units, BaseQuantity) and units.magnitude != 1:
                 inst = copy.copy(units)
                 logger.warning('Creating new Quantity using a non unity '
                                'Quantity as units.')
@@ -145,23 +302,12 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
         else:
             raise TypeError('units must be of type str, Quantity or '
                             'UnitsContainer; not {}.'.format(type(units)))
-
         inst.__used = False
         inst.__handling = None
-        # Only instances where the magnitude is iterable should have __iter__()
-        if hasattr(inst._magnitude,"__iter__"):
-            inst.__iter__ = cls._iter
         return inst
 
-    def _iter(self):
-        """
-        Will be become __iter__() for instances with iterable magnitudes
-        """
-        # # Allow exception to propagate in case of non-iterable magnitude
-        it_mag = iter(self.magnitude)
-        return iter((self.__class__(mag, self._units) for mag in it_mag))
     @property
-    def debug_used(self):
+    def debug__used(self):
         return self.__used
 
     def __copy__(self):
@@ -249,7 +395,7 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
-            super(_Quantity, self)._repr_pretty_(p, cycle)
+            super(BaseQuantity, self)._repr_pretty_(p, cycle)
         else:
             p.pretty(self.magnitude)
             p.text(" ")
@@ -890,7 +1036,6 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
 
         self._magnitude = magnitude_op(self._magnitude, other._magnitude)
         self._units = units_op(self._units, other._units)
-
         return self
 
     @check_implemented
@@ -1197,7 +1342,7 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
     def __eq__(self, other):
         # We compare to the base class of Quantity because
         # each Quantity class is unique.
-        if not isinstance(other, _Quantity):
+        if not isinstance(other, BaseQuantity):
             if _eq(other, 0, True):
                 # Handle the special case in which we compare to zero
                 # (or an array of zeros)
@@ -1329,49 +1474,6 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
                 tuple(__prod_units.keys()) + \
                 tuple(__copy_units) + tuple(__skip_other_args)
 
-    def clip(self, first=None, second=None, out=None, **kwargs):
-        min = kwargs.get('min', first)
-        max = kwargs.get('max', second)
-
-        if min is None and max is None:
-            raise TypeError('clip() takes at least 3 arguments (2 given)')
-
-        if max is None and 'min' not in kwargs:
-            min, max = max, min
-
-        kwargs = {'out': out}
-
-        if min is not None:
-            if isinstance(min, self.__class__):
-                kwargs['min'] = min.to(self).magnitude
-            elif self.dimensionless:
-                kwargs['min'] = min
-            else:
-                raise DimensionalityError('dimensionless', self._units)
-
-        if max is not None:
-            if isinstance(max, self.__class__):
-                kwargs['max'] = max.to(self).magnitude
-            elif self.dimensionless:
-                kwargs['max'] = max
-            else:
-                raise DimensionalityError('dimensionless', self._units)
-
-        return self.__class__(self.magnitude.clip(**kwargs), self._units)
-
-    def fill(self, value):
-        self._units = value._units
-        return self.magnitude.fill(value.magnitude)
-
-    def put(self, indices, values, mode='raise'):
-        if isinstance(values, self.__class__):
-            values = values.to(self).magnitude
-        elif self.dimensionless:
-            values = self.__class__(values, '').to(self)
-        else:
-            raise DimensionalityError('dimensionless', self._units)
-        self.magnitude.put(indices, values, mode)
-
     @property
     def real(self):
         return self.__class__(self._magnitude.real, self._units)
@@ -1432,14 +1534,12 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
 
         return value
 
-    def __len__(self):
-        return len(self._magnitude)
 
     def __getattr__(self, item):
         # Attributes starting with `__array_` are common attributes of NumPy ndarray.
         # They are requested by numpy functions.
         if item.startswith('__array_'):
-            warnings.warn("The unit of the quantity is stripped.", UnitStrippedWarning)
+            warnings.warn("The unit of the quantity is stripped when getting {} attribute".format(item), UnitStrippedWarning)
             if isinstance(self._magnitude, ndarray):
                 return getattr(self._magnitude, item)
             else:
@@ -1460,46 +1560,6 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
             raise AttributeError("Neither Quantity object nor its magnitude ({}) "
                                  "has attribute '{}'".format(self._magnitude, item))
 
-    def __getitem__(self, key):
-        try:
-            value = self._magnitude[key]
-            return self.__class__(value, self._units)
-        except TypeError:
-            raise TypeError("Neither Quantity object nor its magnitude ({})"
-                            "supports indexing".format(self._magnitude))
-
-    def __setitem__(self, key, value):
-        try:
-            if math.isnan(value):
-                self._magnitude[key] = value
-                return
-        except (TypeError, DimensionalityError):
-            pass
-
-        try:
-            if isinstance(value, self.__class__):
-                factor = self.__class__(value.magnitude, value._units / self._units).to_root_units()
-            else:
-                factor = self.__class__(value, self._units ** (-1)).to_root_units()
-
-            if isinstance(factor, self.__class__):
-                if not factor.dimensionless:
-                    raise DimensionalityError(value, self.units,
-                                              extra_msg='. Assign a quantity with the same dimensionality or '
-                                                        'access the magnitude directly as '
-                                                        '`obj.magnitude[%s] = %s`' % (key, value))
-                self._magnitude[key] = factor.magnitude
-            else:
-                self._magnitude[key] = factor
-
-        except TypeError:
-            raise TypeError("Neither Quantity object nor its magnitude ({})"
-                            "supports indexing".format(self._magnitude))
-
-    def tolist(self):
-        units = self._units
-        return [self.__class__(value, units).tolist() if isinstance(value, list) else self.__class__(value, units)
-                for value in self._magnitude.tolist()]
 
     __array_priority__ = 17
 
@@ -1575,12 +1635,12 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
             if tmp == 'size':
                 out = self.__class__(out, self._units ** self._magnitude.size)
             elif tmp == 'div':
-                units1 = objs[0]._units if isinstance(objs[0], self.__class__) else UnitsContainer()
-                units2 = objs[1]._units if isinstance(objs[1], self.__class__) else UnitsContainer()
+                units1 = objs[0]._units if isinstance(objs[0], BaseQuantity) else UnitsContainer()
+                units2 = objs[1]._units if isinstance(objs[1], BaseQuantity) else UnitsContainer()
                 out = self.__class__(out, units1 / units2)
             elif tmp == 'mul':
-                units1 = objs[0]._units if isinstance(objs[0], self.__class__) else UnitsContainer()
-                units2 = objs[1]._units if isinstance(objs[1], self.__class__) else UnitsContainer()
+                units1 = objs[0]._units if isinstance(objs[0], BaseQuantity) else UnitsContainer()
+                units2 = objs[1]._units if isinstance(objs[1], BaseQuantity) else UnitsContainer()
                 out = self.__class__(out, units1 * units2)
             else:
                 out = self.__class__(out, self._units ** tmp)
@@ -1736,14 +1796,133 @@ class _Quantity(PrettyIPython, SharedRegistryObject):
     def to_timedelta(self):
         return datetime.timedelta(microseconds=self.to('microseconds').magnitude)
 
+class QuantitySequenceMixin(object):
+    def __len__(self):
+        return len(self._magnitude)
+        
+    def __getitem__(self, key):
+        try:
+            value = self._magnitude[key]
+            return self.__class__(value, self._units)
+        except TypeError:
+            raise TypeError("Neither Quantity object nor its magnitude ({})"
+                            "supports indexing".format(self._magnitude))
+
+    def __setitem__(self, key, value):
+        try:
+            if math.isnan(value):
+                self._magnitude[key] = value
+                return
+        except (TypeError, DimensionalityError):
+            pass
+
+        try:
+            if isinstance(value, BaseQuantity):
+                factor = self.__class__(value.magnitude, value._units / self._units).to_root_units()
+            else:
+                factor = self.__class__(value, self._units ** (-1)).to_root_units()
+
+            if isinstance(factor, BaseQuantity):
+                if not factor.dimensionless:
+                    raise DimensionalityError(value, self.units,
+                                              extra_msg='. Assign a quantity with the same dimensionality or '
+                                                        'access the magnitude directly as '
+                                                        '`obj.magnitude[%s] = %s`' % (key, value))
+                self._magnitude[key] = factor.magnitude
+            else:
+                self._magnitude[key] = factor
+
+        except TypeError:
+            raise TypeError("Neither Quantity object nor its magnitude ({})"
+                            "supports indexing".format(self._magnitude))
+    def __iter__(self):
+        """
+        Will be become __iter__() for instances with iterable magnitudes
+        """
+        # # Allow exception to propagate in case of non-iterable magnitude
+        it_mag = iter(self.magnitude)
+        return iter((self.__class__(mag, self._units) for mag in it_mag))
+
+    def clip(self, first=None, second=None, out=None, **kwargs):
+        min = kwargs.get('min', first)
+        max = kwargs.get('max', second)
+
+        if min is None and max is None:
+            raise TypeError('clip() takes at least 3 arguments (2 given)')
+
+        if max is None and 'min' not in kwargs:
+            min, max = max, min
+
+        kwargs = {'out': out}
+
+        if min is not None:
+            if isinstance(min, BaseQuantity):
+                kwargs['min'] = min.to(self).magnitude
+            elif self.dimensionless:
+                kwargs['min'] = min
+            else:
+                raise DimensionalityError('dimensionless', self._units)
+
+        if max is not None:
+            if isinstance(max, BaseQuantity):
+                kwargs['max'] = max.to(self).magnitude
+            elif self.dimensionless:
+                kwargs['max'] = max
+            else:
+                raise DimensionalityError('dimensionless', self._units)
+
+        return self.__class__(self.magnitude.clip(**kwargs), self._units)
+
+    def fill(self, value):
+        self._units = value._units
+        return self.magnitude.fill(value.magnitude)
+
+    def put(self, indices, values, mode='raise'):
+        if isinstance(values, BaseQuantity):
+            values = values.to(self).magnitude
+        elif self.dimensionless:
+            values = self.__class__(values, '').to(self)
+        else:
+            raise DimensionalityError('dimensionless', self._units)
+        self.magnitude.put(indices, values, mode)
+        
+    def tolist(self):
+        units = self._units
+        return [self.__class__(value, units).tolist() if isinstance(value, list) else self.__class__(value, units)
+                for value in self._magnitude.tolist()]
 
 
 def build_quantity_class(registry, force_ndarray=False):
-
-    class Quantity(_Quantity):
-        pass
-
+    
+    class Quantity(BaseQuantity):
+        def __new__(cls, value, units=None):
+            if units is None:
+                if isinstance(value, string_types):
+                    if value == '':
+                        raise ValueError('Expression to parse as Quantity cannot '
+                                         'be an empty string.')
+                    inst = cls._REGISTRY.parse_expression(value)
+                    return cls.__new__(cls, inst)
+                elif isinstance(value, cls):
+                    inst = copy.copy(value)
+                else:
+                    value = _to_magnitude(value, cls.force_ndarray)
+                    units = UnitsContainer()
+            if hasattr(value, "__iter__"):
+                return QuantitySequence._new(value,units)
+            else:
+                return QuantityScalar._new(value,units)
+    
     Quantity._REGISTRY = registry
     Quantity.force_ndarray = force_ndarray
-
+    
+    class QuantityScalar(Quantity):
+        def __new__(cls, value, units=None):
+            inst = Quantity.__new__(Quantity, value, units)
+            return inst
+    
+    class QuantitySequence(Quantity,QuantitySequenceMixin):
+        def __new__(cls, value, units=None):
+            inst = Quantity.__new__(Quantity, value, units)
+            return inst
     return Quantity
