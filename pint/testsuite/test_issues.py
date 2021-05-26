@@ -105,12 +105,12 @@ class TestIssues(QuantityTestCase):
     @helpers.requires_numpy
     def test_issue45b(self):
         helpers.assert_quantity_almost_equal(
-            np.sin([np.pi / 2] * ureg.m / ureg.m),
-            np.sin([np.pi / 2] * ureg.dimensionless),
+            np.sin([np.pi / 2] * ureg.rad * ureg.m / ureg.m),
+            np.sin([np.pi / 2] * ureg.rad * ureg.dimensionless),
         )
         helpers.assert_quantity_almost_equal(
-            np.sin([np.pi / 2] * ureg.cm / ureg.m),
-            np.sin([np.pi / 2] * ureg.dimensionless * 0.01),
+            np.sin([np.pi / 2] * ureg.rad * ureg.cm / ureg.m),
+            np.sin([np.pi / 2] * ureg.rad * ureg.dimensionless * 0.01),
         )
 
     def test_issue50(self):
@@ -823,8 +823,8 @@ if np is not None:
     @pytest.mark.parametrize(
         "callable",
         [
-            lambda x: np.sin(x / x.units),  # Issue 399
-            lambda x: np.cos(x / x.units),  # Issue 399
+            lambda x: np.sin(x / x.units * ureg.rad),  # Issue 399
+            lambda x: np.cos(x / x.units * ureg.rad),  # Issue 399
             np.isfinite,  # Issue 481
             np.shape,  # Issue 509
             np.size,  # Issue 509

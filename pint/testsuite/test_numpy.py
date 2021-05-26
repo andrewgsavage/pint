@@ -278,7 +278,7 @@ class TestNumpyMathematicalFunctions(TestNumpyMethods):
     @helpers.requires_array_function_protocol()
     def test_unwrap(self):
         helpers.assert_quantity_equal(
-            np.unwrap([0, 3 * np.pi] * self.ureg.radians), [0, np.pi]
+            np.unwrap([0, 3 * np.pi] * self.ureg.radians), [0, np.pi] * self.ureg.rad
         )
         helpers.assert_quantity_equal(
             np.unwrap([0, 540] * self.ureg.deg), [0, 180] * self.ureg.deg

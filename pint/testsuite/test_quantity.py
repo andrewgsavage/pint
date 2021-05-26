@@ -370,7 +370,7 @@ class TestQuantity(QuantityTestCase):
             meter.from_(2)
         with pytest.raises(ValueError):
             meter.m_from(2)
-
+    
     @helpers.requires_numpy
     def test_retain_unit(self):
         # Test that methods correctly retain units and do not degrade into
@@ -389,6 +389,7 @@ class TestQuantity(QuantityTestCase):
         assert self.Q_(2, "ms") == self.Q_(2, "millisecond")
         assert self.Q_(2, "cm") == self.Q_(2, "centimeter")
 
+    @pytest.mark.xfail(reason="test needs renaming as it will test angle dims")
     def test_dimensionless_units(self):
         assert (
             round(abs(self.Q_(360, "degree").to("radian").magnitude - 2 * math.pi), 7)
