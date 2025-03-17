@@ -137,6 +137,10 @@ class PlainQuantity(Generic[MagnitudeT], PrettyIPython, SharedRegistryObject):
     _magnitude: MagnitudeT
 
     @property
+    def values(self) -> MagnitudeT:
+        return self.magnitude
+
+    @property
     def ndim(self) -> int:
         if isinstance(self.magnitude, numbers.Number):
             return 0
