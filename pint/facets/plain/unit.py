@@ -12,7 +12,7 @@ import copy
 import locale
 import operator
 from numbers import Number
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload, Self
 
 from ..._typing import UnitLike
 from ...compat import NUMERIC_TYPES, deprecated
@@ -26,6 +26,10 @@ if TYPE_CHECKING:
 
 class PlainUnit(PrettyIPython, SharedRegistryObject):
     """Implements a class to describe a unit supporting math operations."""
+
+    @property
+    def dimension(self) -> UnitsContainer:
+        return self.dimensionality
 
     def __reduce__(self):
         # See notes in Quantity.__reduce__
@@ -141,7 +145,9 @@ class PlainUnit(PrettyIPython, SharedRegistryObject):
 
         return self.dimensionless
 
-    def __mul__(self, other):
+    @overload
+    def __mul__(self, other: Self) -> Self: ...
+    def __mul__(self, other: Any) -> Any:
         if self._check(other):
             if isinstance(other, self.__class__):
                 return self.__class__(self._units * other._units)
@@ -156,7 +162,9 @@ class PlainUnit(PrettyIPython, SharedRegistryObject):
 
     __rmul__ = __mul__
 
-    def __truediv__(self, other):
+    @overload
+    def __truediv__(self, other: Self) -> Self: ...
+    def __truediv__(self, other: Any) -> Any:
         if self._check(other):
             if isinstance(other, self.__class__):
                 return self.__class__(self._units / other._units)
@@ -179,7 +187,7 @@ class PlainUnit(PrettyIPython, SharedRegistryObject):
     __div__ = __truediv__
     __rdiv__ = __rtruediv__
 
-    def __pow__(self, other) -> PlainUnit:
+    def __pow__(self, other):
         if isinstance(other, NUMERIC_TYPES):
             return self.__class__(self._units**other)
 
