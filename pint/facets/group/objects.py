@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     ]
 
 
-class GroupQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class GroupQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     pass
 
 

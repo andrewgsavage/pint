@@ -105,7 +105,7 @@ def register_unit_format(name: str):
 
             def format_quantity(
                 self,
-                quantity: PlainQuantity[MagnitudeT],
+                quantity: PlainQuantity[MagnitudeT, PlainUnit],
                 qspec: str = "",
                 **babel_kwds: Unpack[BabelKwds],
             ) -> str:

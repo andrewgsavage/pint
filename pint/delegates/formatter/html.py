@@ -119,7 +119,7 @@ class HTMLFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         qspec: str = "",
         sort_func: SortFunc | None = None,
         **babel_kwds: Unpack[BabelKwds],

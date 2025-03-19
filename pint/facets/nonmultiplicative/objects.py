@@ -13,7 +13,7 @@ from typing import Generic
 from ..plain import MagnitudeT, PlainQuantity, PlainUnit
 
 
-class NonMultiplicativeQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class NonMultiplicativeQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     @property
     def _is_multiplicative(self) -> bool:
         """Check if the PlainQuantity object has only multiplicative units."""

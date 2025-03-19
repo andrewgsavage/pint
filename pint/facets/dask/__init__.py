@@ -39,7 +39,7 @@ def check_dask_array(f):
     return wrapper
 
 
-class DaskQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class DaskQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     # Dask.array.Array ducking
     def __dask_graph__(self):
         if isinstance(self._magnitude, dask_array.Array):

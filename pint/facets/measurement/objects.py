@@ -18,7 +18,7 @@ from ..plain import MagnitudeT, PlainQuantity, PlainUnit
 MISSING = object()
 
 
-class MeasurementQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class MeasurementQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     # Measurement support
     def plus_minus(self, error, relative=False):
         if isinstance(error, self.__class__):

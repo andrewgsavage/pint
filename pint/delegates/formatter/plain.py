@@ -115,7 +115,7 @@ class DefaultFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         qspec: str = "",
         sort_func: SortFunc | None = None,
         **babel_kwds: Unpack[BabelKwds],
@@ -230,7 +230,7 @@ class CompactFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         qspec: str = "",
         sort_func: SortFunc | None = None,
         **babel_kwds: Unpack[BabelKwds],
@@ -344,7 +344,7 @@ class PrettyFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         qspec: str = "",
         sort_func: SortFunc | None = None,
         **babel_kwds: Unpack[BabelKwds],
@@ -432,7 +432,7 @@ class RawFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         qspec: str = "",
         sort_func: SortFunc | None = None,
         **babel_kwds: Unpack[BabelKwds],

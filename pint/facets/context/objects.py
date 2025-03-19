@@ -35,7 +35,7 @@ ToBaseFunc = Callable[[UnitsContainer], UnitsContainer]
 SrcDst = tuple[UnitsContainer, UnitsContainer]
 
 
-class ContextQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class ContextQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     pass
 
 

@@ -16,7 +16,7 @@ from typing import Any, Generic
 from ..._typing import Shape
 from ...compat import HAS_NUMPY, _to_magnitude, np
 from ...errors import DimensionalityError, PintTypeError, UnitStrippedWarning
-from ..plain import MagnitudeT, PlainQuantity
+from ..plain import MagnitudeT, PlainQuantity, PlainUnit
 from .numpy_func import (
     HANDLED_UFUNCS,
     copy_units_output_ufuncs,
@@ -51,7 +51,7 @@ def method_wraps(numpy_func):
     return wrapper
 
 
-class NumpyQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT]):
+class NumpyQuantity(Generic[MagnitudeT], PlainQuantity[MagnitudeT, PlainUnit]):
     """ """
 
     # NumPy function/ufunc support

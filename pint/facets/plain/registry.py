@@ -160,8 +160,8 @@ class RegistryMeta(type):
 
 
 # Generic types used to mark types associated to Registries.
-QuantityT = TypeVar("QuantityT", bound=PlainQuantity[Any])
 UnitT = TypeVar("UnitT", bound=PlainUnit)
+QuantityT = TypeVar("QuantityT", bound=PlainQuantity[Any, UnitT])
 
 
 class GenericPlainRegistry(Generic[QuantityT, UnitT], metaclass=RegistryMeta):
@@ -1419,6 +1419,6 @@ class GenericPlainRegistry(Generic[QuantityT, UnitT], metaclass=RegistryMeta):
     __call__ = parse_expression
 
 
-class PlainRegistry(GenericPlainRegistry[PlainQuantity[Any], PlainUnit]):
-    Quantity: TypeAlias = PlainQuantity[Any]
+class PlainRegistry(GenericPlainRegistry[PlainQuantity[Any, PlainUnit], PlainUnit]):
+    Quantity: TypeAlias = PlainQuantity[Any, PlainUnit]
     Unit: TypeAlias = PlainUnit

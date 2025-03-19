@@ -141,7 +141,7 @@ class FullFormatter(BaseFormatter):
 
     def format_quantity(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         spec: str = "",
         **babel_kwds: Unpack[BabelKwds],
     ) -> str:
@@ -232,7 +232,7 @@ class FullFormatter(BaseFormatter):
 
     def format_quantity_babel(
         self,
-        quantity: PlainQuantity[MagnitudeT],
+        quantity: PlainQuantity[MagnitudeT, PlainUnit],
         spec: str = "",
         length: Literal["short", "long", "narrow"] | None = None,
         locale: Locale | None = None,
