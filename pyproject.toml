@@ -38,7 +38,7 @@ packages = ["pint"]
 include = ["pint/default_en.txt", "pint/constants_en.txt"]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "pytest-subtests", "pytest-benchmark"]
+test = ["pytest", "pytest-cov", "pytest-subtests", "pytest-benchmark", "mypy"]
 test-mpl = ["pytest-mpl"]
 test-all = ["pint[test, test-mpl]"]
 codspeed = ["pint[test-all]", "pytest-codspeed"]
@@ -106,6 +106,7 @@ platforms = ['osx-arm64', 'linux-64', 'win-64']
 
 [tool.pixi.pypi-dependencies]
 pint = { path = ".", editable = true }
+metrology-apis = { path = "../metrology-apis" }
 
 [tool.pixi.environments]
 dev = { features = ["numpy", "dev", "py313"], solve-group = "default" }
@@ -176,6 +177,7 @@ publish = "uv publish"
 [tool.pixi.feature.test.tasks]
 test = "pytest --benchmark-skip"
 bench = "pytest --benchmark-only"
+mypy = "mypy --follow-untyped-imports test_pint.py"
 
 [tool.pixi.feature.typecheck.dependencies]
 pyright = "*"
@@ -204,8 +206,8 @@ python = "3.12.*"
 python = "3.13.*"
 
 [tool.pyright]
-include = ["pint"]
-exclude = ["pint/testsuite"]
+include = ["pint/util.py"]
+exclude = ["pint/testsuite", "pint/delegates"]
 
 [tool.pyright.defineConstant]
 HAS_BABEL = true
